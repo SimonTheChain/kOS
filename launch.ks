@@ -188,13 +188,13 @@ SET RefTime TO Now.
 
 UNTIL ShipPeri >= FinalApo {
 
-    IF ShipApo > FinalApo {
+    IF ShipApo > FinalApo+1000 {
     	
     	IF Pitch < 45 {
     		
     		IF Count = 0 {
     			SET Pitch TO Pitch+1.
-    			SET Count TO 10.
+    			SET Count TO 5.
     			SET RefTime TO Now.
     		
     		} ELSE IF Count > 0 {
@@ -207,13 +207,13 @@ UNTIL ShipPeri >= FinalApo {
     		}
     	}
         
-    } ELSE IF ShipApo < FinalApo {
+    } ELSE IF ShipApo < FinalApo-1000 {
         
         IF Pitch > -45 {
     		
     		IF Count = 0 {
     			SET Pitch TO Pitch-1.
-    			SET Count TO 10.
+    			SET Count TO 5.
     			SET RefTime TO Now.
     		
     		} ELSE IF Count > 0 {
@@ -225,7 +225,11 @@ UNTIL ShipPeri >= FinalApo {
     			}
     		}
     	}
+    
+    } ELSE {
+    	SET Pitch TO 0.
     }
+    
     HEAD(3,90,Pitch).
 
 	IF ShipApo >= 300000 AND ShipPeri >= 150000 {
@@ -248,6 +252,7 @@ UNTIL STAGE:READY {
 LOCK THROTTLE TO 1.
 WAIT 3.
 LOCK THROTTLE TO 0.
+RCS OFF.
 SAS ON.
 SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
 PRINT " ".
