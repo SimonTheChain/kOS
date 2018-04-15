@@ -31,7 +31,6 @@ LOCK ShipSpeed TO SHIP:VELOCITY:SURFACE:MAG.
 LOCK ShipAlt TO SHIP:ALTITUDE.
 LOCK ApoTime TO ETA:APOAPSIS.
 LOCK ShipVertical TO SHIP:VERTICALSPEED.
-LOCK Now TO TIME:CLOCK.
 
 PRINT "_PHASE 0_: Launch".
 SAS OFF.
@@ -146,10 +145,10 @@ UNTIL FirstStage:FLAMEOUT {
             HEAD(1,90,40).
 
         } ELSE IF ShipSpeed >= 1600 AND ShipSpeed < 2000 {
-            HEAD(1,90,30).
+            HEAD(1,90,35).
 
         } ELSE IF ShipSpeed >= 2000 {
-            HEAD(1,90,20).
+            HEAD(1,90,25).
         
         } ELSE {
             HEAD(1,90,80).
@@ -168,6 +167,8 @@ UNTIL STAGE:READY {
 
 PRINT " ".
 PRINT "_PHASE 2_: Closed-loop control".
+SET FinalPeri TO ShipApo.
+PRINT "Final periapsis set to "+ROUND(FinalPeri)+" meters".
 PRINT "Ignition".
 STAGE.
 
@@ -180,62 +181,48 @@ UNTIL ShipVertical <= 0 {
 	WAIT 0.001.
 }.
 
-SET FinalApo TO ShipApo.
-PRINT "Final apoapsis set to "+ROUND(FinalApo)+" meters".
+UNTIL ShipAlt <= FinalPeri {
+	HEAD(3,90,5).
+	WAIT 0.001.
+}
+
 SET Pitch TO 0.
-SET Count TO 0.
-SET RefTime TO Now.
+SET FinalApo to ShipApo.
+SET Results TO ShipApo.
 
-UNTIL ShipPeri >= FinalApo {
+UNTIL ShipPeri >= FinalPeri {
 
-    IF ShipApo > FinalApo+1000 {
-    	
-    	IF Pitch < 45 {
-    		
-    		IF Count = 0 {
-    			SET Pitch TO Pitch+1.
-    			SET Count TO 5.
-    			SET RefTime TO Now.
-    		
-    		} ELSE IF Count > 0 {
-    			IF Now >= RefTime+"00:00:01" {
-    				SET Count TO Count-1.
-    				//DEBUG
-    				PRINT "Count: "+Count+"     " AT(0,28).
-					PRINT "RefTime: "+RefTime+"     " AT(0,29).
-    			}
-    		}
-    	}
+	SET RefApo to ShipApo.
+	
+    IF ShipApo > FinalApo+500 {
         
-    } ELSE IF ShipApo < FinalApo-1000 {
+        IF Pitch < 45 {
+
+        	IF RefApo > Results {
+				SET Pitch TO Pitch+1.
+			}
+    	}
+
+    } ELSE IF ShipApo < FinalApo-500 {
         
         IF Pitch > -45 {
-    		
-    		IF Count = 0 {
-    			SET Pitch TO Pitch-1.
-    			SET Count TO 5.
-    			SET RefTime TO Now.
-    		
-    		} ELSE IF Count > 0 {
-    			IF Now >= RefTime+"00:00:01" {
-    				SET Count TO Count-1.
-    				//DEBUG
-    				PRINT "Count: "+Count+"     " AT(0,28).
-					PRINT "RefTime: "+RefTime+"     " AT(0,29).
-    			}
-    		}
+
+        	IF RefApo < Results {
+        		SET Pitch TO Pitch-1.
+        	}
     	}
     
     } ELSE {
     	SET Pitch TO 0.
     }
-    
-    HEAD(3,90,Pitch).
 
 	IF ShipApo >= 300000 AND ShipPeri >= 150000 {
 		PRINT "Apoapsis threshold reached".
 		BREAK.
 	}
+	HEAD(3,90,Pitch).
+	WAIT 0.001.
+	SET Results TO ShipApo.
 	WAIT 0.001.
 }.
 
