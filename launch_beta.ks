@@ -76,10 +76,13 @@ UNTIL STAGE:READY {
 
 PRINT "_PHASE 1_: Open-loop control".
 
-SET Boosters TO LIST().
+FOR e IN FirstStageEngines {
+    
+}
+
 FOR e IN AllEngines {
     IF e:IGNITION {
-        IF NOT FirstStageEngines:CONTAINS(e) {
+        IF e NOT IN FirstStageEngines {
             Boosters:ADD(e).
         }
     }
