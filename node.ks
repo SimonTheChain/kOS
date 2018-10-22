@@ -9,6 +9,25 @@ FUNCTION MONITOR {
 	PRINT "-Ignition: " + ROUND(BurnTime/2) + " seconds       " AT (0,34).
 }
 
+FUNCTION MANEUVER_TIME {
+	PARAMETER dV.
+
+	LIST ENGINES IN en.
+
+	LOCAL f IS en[0]:MAXTHRUST * 1000.  // Engine Thrust (kg * m/s²)
+	LOCAL m IS SHIP:MASS * 1000.        // Starting mass (kg)
+	LOCAL e IS CONSTANT():E.            // Base of natural log
+	LOCAL p IS en[0]:VISP.               // Engine ISP (s)
+	LOCAL g IS 9.80665.                 // Gravitational acceleration constant (m/s²)
+
+	PRINT "Engine name: " + en[0]:NAME AT (0,23).
+	PRINT "Engine:MAXTHRUST * 1000: " + f AT(0,24).
+	PRINT "SHIP:MASS * 1000: " + m AT(0,25).
+	PRINT "Engine:VISP: " + p AT(0,26).
+
+	RETURN g * m * p * (1 - e^(-dV/(g*p))) / f.
+}
+
 FUNCTION BURN_WAIT {
 	//the ship is facing the right direction, let's wait for our burn time
 	UNTIL NdEta <= (BurnTime/2){
@@ -19,15 +38,9 @@ FUNCTION BURN_WAIT {
 
 FUNCTION BURN {
 	PARAMETER USE_RCS.
-	
-	PRINT "Using RCS: " + USE_RCS.
-	PRINT "Ignition".
-	SET RefDv TO NdDeltaV.
-	
-	IF USE_RCS = True {
-		SET SHIP:CONTROL:FORE TO 1.
 
-	} ELSE {
+	IF USE_RCS = False {
+		PRINT "Engine ignition".
 		LOCK THROTTLE TO 1.0.
 		LIST ENGINES IN AllEngines.
 
@@ -36,32 +49,11 @@ FUNCTION BURN {
 		        GLOBAL StageEngine IS e.
 		    }
 		}
-	}
 
-	SET LoopCount TO 0.
-	SET LoopBreak TO False.
-	SET TimeRef TO 0.
+		UNTIL NdDeltaV <= 5 {
+			MONITOR().
+			WAIT 0.001.
 
-	UNTIL LoopBreak = True {
-		MONITOR().
-		SET RefDv TO NdDeltaV.
-		SET BurnStart TO TIME.
-		WAIT 0.001.	
-
-		SET LoopCount TO LoopCount+1.
-		SET BurnEnd TO TIME.
-		SET TimeRef TO TimeRef + (BurnEnd:SECONDS - BurnStart:SECONDS).
-		PRINT "LoopCount: " + LoopCount AT(0,20).
-		PRINT "RefDv: " + RefDv AT(0,21).
-		PRINT "NdDeltaV: " + NdDeltaV AT(0,22).
-		PRINT "RefDv < NdDeltaV: " + (RefDv < NdDeltaV) AT(0,23).
-		PRINT "TimeRef: " + TimeRef AT(0,24).
-		
-		IF LoopCount >= 10 AND (RefDv < NdDeltaV OR TimeRef >= BurnTime) {
-			SET LoopBreak TO True.
-		}
-
-		IF USE_RCS = False {
 			IF StageEngine:FLAMEOUT {
 				PRINT "Staging".
 		        STAGE.
@@ -77,18 +69,25 @@ FUNCTION BURN {
 		            WAIT 0.001.
 		        }.
 			}
-		}
-	}.
+		}.
 
-	IF USE_RCS = True {
-		SET SHIP:CONTROL:FORE TO 0.
-		PRINT "Thruster shutdown".
-	
-	} ELSE {
 		LOCK THROTTLE TO 0.
 		PRINT "Engine shutdown".
-
 	}
+
+	PRINT "Thrusters ignition".
+	SET SHIP:CONTROL:FORE TO 1.
+
+	SET RefDv TO NdDeltaV.
+	UNTIL RefDv < NdDeltaV {
+		MONITOR().
+		SET RefDv TO NdDeltaV.
+		WAIT 0.001.
+	}
+
+	SET SHIP:CONTROL:FORE TO 0.
+	PRINT "Thrusters shutdown".
+
 }
 
 CLEARSCREEN.
@@ -98,11 +97,11 @@ SET Nd to NEXTNODE.
 LOCK NdDeltaV TO Nd:DELTAV:MAG.
 LOCK NdEta to Nd:ETA.
 SET MaxAcc to SHIP:MAXTHRUST/SHIP:MASS.
-SET BurnTime TO NdDeltaV/MaxAcc.
+SET BurnTime TO MANEUVER_TIME(NdDeltaV).
 LIST ENGINES IN AllEngines.
 
 
-PRINT "Node execution program started (201810161044).".
+PRINT "Node execution program started (20181022-1035).".
 
 UNTIL NdEta <= (BurnTime/2 + 200) {
 	MONITOR().
