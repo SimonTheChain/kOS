@@ -12,28 +12,64 @@ FUNCTION MONITOR {
 FUNCTION MANEUVER_TIME {
 	PARAMETER dV.
 
-	LIST ENGINES IN en.
+	LIST ENGINES IN AllEngines.
+	SET StageRef TO 0.
 
-	LOCAL f IS en[0]:MAXTHRUST * 1000.  // Engine Thrust (kg * m/s²)
+	FOR e IN AllEngines {
+	    IF e:STAGE > StageRef {
+	    	SET StageRef TO e:STAGE.
+	    }
+	}.
+
+	SET StageEngines to LIST().
+
+	FOR e IN AllEngines {
+	    IF e:STAGE = StageRef {
+	    	StageEngines:ADD(e).
+	    }
+	}.
+
+	GLOBAL StageEngine IS StageEngines[0].
+	SET EnginesThrust TO 0.
+
+	FOR e IN StageEngines {
+	    SET EnginesThrust TO EnginesThrust + e:MAXTHRUST.
+	}.
+
+	LOCAL f IS EnginesThrust * 1000.  // Engine Thrust (kg * m/s²)
 	LOCAL m IS SHIP:MASS * 1000.        // Starting mass (kg)
 	LOCAL e IS CONSTANT():E.            // Base of natural log
-	LOCAL p IS en[0]:VISP.               // Engine ISP (s)
+	LOCAL p IS StageEngine:VISP.               // Engine ISP (s)
 	LOCAL g IS 9.80665.                 // Gravitational acceleration constant (m/s²)
-
-	PRINT "Engine name: " + en[0]:NAME AT (0,23).
-	PRINT "Engine:MAXTHRUST * 1000: " + f AT(0,24).
-	PRINT "SHIP:MASS * 1000: " + m AT(0,25).
-	PRINT "Engine:VISP: " + p AT(0,26).
 
 	RETURN g * m * p * (1 - e^(-dV/(g*p))) / f.
 }
 
 FUNCTION BURN_WAIT {
-	//the ship is facing the right direction, let's wait for our burn time
+	PARAMETER USE_RCS.
+
+	IF USE_RCS = False {
+		SET BurnTime TO BurnTime + 3.
+	}
+
 	UNTIL NdEta <= (BurnTime/2){
 		MONITOR().
 		WAIT 0.001.
 	}.
+
+	IF USE_RCS = False {
+		SET SHIP:CONTROL:FORE TO 1.
+		SET Time1 to TIME.
+		SET Time2 to TIME.
+
+		UNTIL Time2:SECONDS - Time1:SECONDS >= 3 {
+			MONITOR().
+			WAIT 0.001.
+			SET Time2 to TIME.
+		}.
+
+		SET SHIP:CONTROL:FORE TO 0.
+	}
 }
 
 FUNCTION BURN {
@@ -42,13 +78,6 @@ FUNCTION BURN {
 	IF USE_RCS = False {
 		PRINT "Engine ignition".
 		LOCK THROTTLE TO 1.0.
-		LIST ENGINES IN AllEngines.
-
-		FOR e IN AllEngines {
-		    IF e:IGNITION {
-		        GLOBAL StageEngine IS e.
-		    }
-		}
 
 		UNTIL NdDeltaV <= 5 {
 			MONITOR().
@@ -76,12 +105,15 @@ FUNCTION BURN {
 	}
 
 	PRINT "Thrusters ignition".
-	SET SHIP:CONTROL:FORE TO 1.
-
 	SET RefDv TO NdDeltaV.
-	UNTIL RefDv < NdDeltaV {
+	SET TotalDv TO RefDv.
+	SET SHIP:CONTROL:FORE TO 1.
+	WAIT 0.1.
+	
+	UNTIL RefDv < NdDeltaV OR TotalDv <= 0 OR NdDeltaV <= 0.1 {
 		MONITOR().
 		SET RefDv TO NdDeltaV.
+		SET TotalDv TO TotalDv - (TotalDv - RefDv).
 		WAIT 0.001.
 	}
 
@@ -101,7 +133,7 @@ SET BurnTime TO MANEUVER_TIME(NdDeltaV).
 LIST ENGINES IN AllEngines.
 
 
-PRINT "Node execution program started (20181022-1035).".
+PRINT "Node execution program started".
 
 UNTIL NdEta <= (BurnTime/2 + 200) {
 	MONITOR().
@@ -110,7 +142,11 @@ UNTIL NdEta <= (BurnTime/2 + 200) {
 
 PRINT "Aligning vessel to maneuver".
 SAS OFF.
-RCS ON.
+
+IF NdDeltaV >= 25 {
+	RCS ON.
+}
+
 SET Np to Nd:DELTAV.
 LOCK STEERING TO Np.
 
@@ -119,42 +155,48 @@ UNTIL VANG(Np, SHIP:FACING:VECTOR) < 0.25 {
 	MONITOR().
 	WAIT 0.001.
 }.
-WAIT 10.
 
-IF BurnTime <= 2 {
-	FOR e IN AllEngines {
-	    e:SHUTDOWN.
-	}
+SET Time1 to TIME.
+SET Time2 to TIME.
+UNTIL Time2:SECONDS - Time1:SECONDS >= 10 {
+	MONITOR().
+	WAIT 0.001.
+	SET Time2 to TIME.
+}.
+
+IF RCS = False {
+	RCS ON.
+}
+
+IF NdDeltaV <= 25 AND NdDeltaV > 1 {
 	PRINT "Testing RCS thrusters power".
 	SET DvStart TO NdDeltaV.
 	SET TimeStart TO TIME.
-	// SET SHIP:CONTROL:FORE TO 1.
-	LOCK THROTTLE TO 1.0.
-	WAIT 5.
-	// SET SHIP:CONTROL:FORE TO 0.
-	LOCK THROTTLE TO 0.
+	SET SHIP:CONTROL:FORE TO 1.
+	WAIT 0.5.
+	SET SHIP:CONTROL:FORE TO 0.
 	SET DvEnd TO NdDeltaV.
 	SET TimeEnd TO TIME.
-	
 	SET DvDiff TO DvStart - DvEnd.
 	SET TimeDiff TO TimeEnd - TimeStart.
-	//SET BurnTime TO DvEnd * TimeDiff:SECONDS / DvDiff.
-	SET BurnTotal TO DvEnd * DvDiff / TimeDiff:SECONDS.
-	GLOBAL BurnTime IS BurnTotal.
+	GLOBAL BurnTime IS DvEnd * TimeDiff:SECONDS / DvDiff.
+	PRINT "Burn time set to " + ROUND(BurnTime) + " seconds".
+	SET SHIP:CONTROL:FORE TO -1.
+	WAIT 0.5.
+	SET SHIP:CONTROL:FORE TO 0.
+	SET UseRcs TO True.
+	BURN_WAIT(UseRcs).
+	BURN(UseRcs).
 
-	PRINT "DvStart: " + DvStart.
-	PRINT "DvEnd: " + DvEnd.
-	PRINT "DvDiff: " + DvDiff.
-	PRINT "TimeDiff:SECONDS: " + TimeDiff:SECONDS.
-	PRINT "Burn time set to " + BurnTime + " seconds".
-
-	SET UseRcs TO False.
-	BURN_WAIT().
+} ELSE IF NdDeltaV <= 1 {
+	GLOBAL BurnTime IS 1.
+	SET UseRcs TO True.
+	BURN_WAIT(UseRcs).
 	BURN(UseRcs).
 
 } ELSE {
 	SET UseRcs TO False.
-	BURN_WAIT().
+	BURN_WAIT(UseRcs).
 	BURN(UseRcs).
 
 }

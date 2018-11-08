@@ -12,10 +12,10 @@ FUNCTION HEAD {
     PRINT "Flight Monitor:" AT(0,30).
     
     IF FLIGHT_MODE = 1 {
-        PRINT "-Changing heading according to velocity" AT(0,31).
+        PRINT "-Changing heading according to altitude" AT(0,31).
     
     } ELSE IF FLIGHT_MODE = 2 {
-        PRINT "-Changing heading according to surface speed" AT(0,31).
+        PRINT "-Changing heading according to velocity" AT(0,31).
     
     } ELSE IF FLIGHT_MODE = 3 {
         PRINT "-Changing heading according to time to apoapsis     " AT(0,31).
@@ -103,13 +103,13 @@ UNTIL ShipAlt >= 200 {
 PRINT "Rolling to flight azimuth".
 
 UNTIL ShipSpeed >= 100 {
-    HEAD(1,90,90).
+    HEAD(2,90,90).
     WAIT 0.001.
 }.
 
 PRINT "Initiating tilt sequence".
 
-UNTIL FirstStageEngines[0]:FLAMEOUT {
+UNTIL ShipApo >= DesiredPeri {
 
     IF ShipAlt < 1000 {
         HEAD(1,90,90).
@@ -146,14 +146,8 @@ UNTIL FirstStageEngines[0]:FLAMEOUT {
         } ELSE IF ShipSpeed >= 1200 AND ShipSpeed < 1600 {
             HEAD(2,90,40).
 
-        } ELSE IF ShipSpeed >= 1600 AND ShipSpeed < 2000 {
+        } ELSE IF ShipSpeed >= 1600 {
             HEAD(2,90,35).
-
-        } ELSE IF ShipSpeed >= 2000 AND ShipSpeed < 3000 {
-            HEAD(2,90,25).
-
-        } ELSE IF ShipSpeed >= 3000 {
-            HEAD(2,90,15).
         
         } ELSE {
             HEAD(2,90,80).
@@ -162,6 +156,20 @@ UNTIL FirstStageEngines[0]:FLAMEOUT {
     }
     WAIT 0.001.
 }.
+
+UNTIL FirstStageEngines[0]:FLAMEOUT {
+
+    IF ApoTime <= 60 {
+        HEAD(3,90,25).
+
+    } ELSE IF ApoTime > 60 AND ApoTime <= 180 {
+        HEAD(3,90,15).
+
+    } ELSE {
+        HEAD(3,90,5).
+    }
+    WAIT 0.001.
+}
 
 PRINT "Staging".
 STAGE.

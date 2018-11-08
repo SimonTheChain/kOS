@@ -53,34 +53,42 @@ CLEARSCREEN.
 
 PRINT "Rendez-Vous program started.".
 SAS OFF.
-RCS ON.
+RCS OFF.
 
 WAIT_LOOP(5000).
-BURN_LOOP(100).
+
+IF RelVel > 100 {
+	BURN_LOOP(100).
+}
+
 WAIT_LOOP(1000).
-BURN_LOOP(50).
+
+IF RelVel > 50 {
+	BURN_LOOP(50).
+}
+
 WAIT_LOOP(500).
-BURN_LOOP(10).
+
+IF RelVel > 10 {
+	BURN_LOOP(10).
+}
 
 PRINT "Neutralizing relative velocity".
+PRINT "Thrusters ignition".
+SET RefVel TO RelVel.
+RCS ON.
 SET SHIP:CONTROL:FORE TO 1.
-SET LoopCount TO 0.
-SET LoopBreak TO False.
+WAIT 0.1.
 
-UNTIL LoopBreak = True {
+UNTIL RefVel <= RelVel OR RelVel <= 1 {
 	MONITOR().
 	LOCK STEERING TO ShipSteer.
 	SET RefVel TO RelVel.
-	SET LoopCount TO LoopCount+1.
 	WAIT 0.001.
-
-	IF LoopCount >= 10 AND RefVel <= RelVel {
-		SET LoopBreak TO True.
-	}
 }.
 
-SET SHIP:CONTROL:FORE TO 1.
-PRINT "Engine shutdown".
+PRINT "Thrusters shutdown".
+SET SHIP:CONTROL:FORE TO 0.
 UNLOCK STEERING.
 UNLOCK THROTTLE.
 SAS ON.
