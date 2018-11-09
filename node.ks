@@ -58,6 +58,7 @@ FUNCTION BURN_WAIT {
 	}.
 
 	IF USE_RCS = False {
+		PRINT "Stabilizing fuel".
 		SET SHIP:CONTROL:FORE TO 1.
 		SET Time1 to TIME.
 		SET Time2 to TIME.
@@ -79,7 +80,7 @@ FUNCTION BURN {
 		PRINT "Engine ignition".
 		LOCK THROTTLE TO 1.0.
 
-		UNTIL NdDeltaV <= 5 {
+		UNTIL NdDeltaV <= 3 {
 			MONITOR().
 			WAIT 0.001.
 
@@ -135,10 +136,10 @@ LIST ENGINES IN AllEngines.
 
 PRINT "Node execution program started".
 
-UNTIL NdEta <= (BurnTime/2 + 200) {
-	MONITOR().
-	WAIT 0.001.
-}.
+// UNTIL NdEta <= (BurnTime/2 + 200) {
+// 	MONITOR().
+// 	WAIT 0.001.
+// }.
 
 PRINT "Aligning vessel to maneuver".
 SAS OFF.
