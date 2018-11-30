@@ -4,8 +4,7 @@
 FUNCTION MONITOR {
 	PRINT "Parameters:" AT (0,30).
 	PRINT "-Target distance: " + ROUND(TargetDist) + " meters       " AT (0,31).
-	PRINT "-Relative velocity: " + ROUND(RelVel) + " m/s       " AT (0,32).
-	//PRINT "-Encounter ETA: " + ROUND(EncEta) + " seconds       " AT (0,33).
+	PRINT "-Relative velocity: " + ROUND(RelVel,1) + " m/s       " AT (0,32).
 }
 
 FUNCTION WAIT_LOOP {
@@ -49,6 +48,9 @@ LOCK TargetDist TO TARGET:DISTANCE.
 LOCK RelVelVec TO TARGET:VELOCITY:ORBIT - SHIP:VELOCITY:ORBIT.
 LOCK RelVel TO RelVelVec:MAG.
 LOCK ShipSteer TO LOOKDIRUP(RelVelVec, SHIP:FACING:UPVECTOR).
+SET STEERINGMANAGER:MAXSTOPPINGTIME TO 5.
+SET STEERINGMANAGER:PITCHPID:KD TO 1.
+SET STEERINGMANAGER:YAWPID:KD TO 1.
 CLEARSCREEN.
 
 PRINT "Rendez-Vous program started.".
@@ -69,8 +71,8 @@ IF RelVel > 50 {
 
 WAIT_LOOP(500).
 
-IF RelVel > 10 {
-	BURN_LOOP(10).
+IF RelVel > 3 {
+	BURN_LOOP(3).
 }
 
 PRINT "Neutralizing relative velocity".
@@ -80,7 +82,7 @@ RCS ON.
 SET SHIP:CONTROL:FORE TO 1.
 WAIT 0.1.
 
-UNTIL RefVel <= RelVel OR RelVel <= 1 {
+UNTIL RefVel <= RelVel OR RelVel <= 0.1 {
 	MONITOR().
 	LOCK STEERING TO ShipSteer.
 	SET RefVel TO RelVel.
@@ -89,6 +91,75 @@ UNTIL RefVel <= RelVel OR RelVel <= 1 {
 
 PRINT "Thrusters shutdown".
 SET SHIP:CONTROL:FORE TO 0.
+PRINT "Relative velocity neutralized".
+
+PRINT "Aligning to target".
+SET ShipSteer TO TARGET:POSITION.
+LOCK STEERING TO ShipSteer.
+
+UNTIL VANG(SHIP:FACING:FOREVECTOR, TARGET:POSITION) < 0.25 {
+	MONITOR().
+	WAIT 0.001.
+}.
+
+PRINT "Approaching target".
+SET SHIP:CONTROL:FORE TO 1.
+
+UNTIL TargetDist <= 150 {
+	MONITOR().
+
+	IF RelVel >= 3 {
+		SET SHIP:CONTROL:FORE TO 0.
+	}
+
+	WAIT 0.001.
+}
+
+SET RefVel TO RelVel.
+SET SHIP:CONTROL:FORE TO -1.
+WAIT 0.1.
+
+UNTIL RefVel <= RelVel OR RelVel <= 0.1 {
+	MONITOR().
+	SET RefVel TO RelVel.
+	WAIT 0.001.
+}.
+
+SET SHIP:CONTROL:FORE TO 0.
+PRINT "Final approach".
+
+SET ShipSteer TO TARGET:POSITION.
+LOCK STEERING TO ShipSteer.
+
+UNTIL VANG(SHIP:FACING:FOREVECTOR, TARGET:POSITION) < 5 {
+	MONITOR().
+	WAIT 0.001.
+}.
+
+SET SHIP:CONTROL:FORE TO 1.
+
+UNTIL TargetDist <= 50 {
+	MONITOR().
+
+	IF RelVel >= 1 {
+		SET SHIP:CONTROL:FORE TO 0.
+	}
+
+	WAIT 0.001.
+}
+
+SET RefVel TO RelVel.
+SET SHIP:CONTROL:FORE TO -1.
+WAIT 0.1.
+
+UNTIL RefVel <= RelVel OR RelVel <= 0.1 {
+	MONITOR().
+	SET RefVel TO RelVel.
+	WAIT 0.001.
+}.
+
+SET SHIP:CONTROL:FORE TO 0.
+
 UNLOCK STEERING.
 UNLOCK THROTTLE.
 SAS ON.

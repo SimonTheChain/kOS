@@ -49,7 +49,7 @@ FUNCTION BURN_WAIT {
 	PARAMETER USE_RCS.
 
 	IF USE_RCS = False {
-		SET BurnTime TO BurnTime + 3.
+		GLOBAL BurnTime IS BurnTime + 6.
 	}
 
 	UNTIL NdEta <= (BurnTime/2){
@@ -57,20 +57,20 @@ FUNCTION BURN_WAIT {
 		WAIT 0.001.
 	}.
 
-	IF USE_RCS = False {
-		PRINT "Stabilizing fuel".
-		SET SHIP:CONTROL:FORE TO 1.
-		SET Time1 to TIME.
-		SET Time2 to TIME.
+	//IF USE_RCS = False {
+	//	PRINT "Stabilizing fuel".
+	//	SET SHIP:CONTROL:FORE TO 1.
+	//	SET Time1 to TIME.
+	//	SET Time2 to TIME.
 
-		UNTIL Time2:SECONDS - Time1:SECONDS >= 3 {
-			MONITOR().
-			WAIT 0.001.
-			SET Time2 to TIME.
-		}.
+	//	UNTIL Time2:SECONDS - Time1:SECONDS >= 6 {
+	//		MONITOR().
+	//		WAIT 0.001.
+	//		SET Time2 to TIME.
+	//	}.
 
-		SET SHIP:CONTROL:FORE TO 0.
-	}
+	//	SET SHIP:CONTROL:FORE TO 0.
+	//}
 }
 
 FUNCTION BURN {
@@ -136,15 +136,18 @@ LIST ENGINES IN AllEngines.
 
 PRINT "Node execution program started".
 
-// UNTIL NdEta <= (BurnTime/2 + 200) {
-// 	MONITOR().
-// 	WAIT 0.001.
-// }.
+UNTIL NdEta <= (BurnTime/2 + 500) {
+	MONITOR().
+	WAIT 0.001.
+}.
 
 PRINT "Aligning vessel to maneuver".
+SET STEERINGMANAGER:MAXSTOPPINGTIME TO 5.
+SET STEERINGMANAGER:PITCHPID:KD TO 1.
+SET STEERINGMANAGER:YAWPID:KD TO 1.
 SAS OFF.
 
-IF NdDeltaV >= 25 {
+IF NdDeltaV >= 10 {
 	RCS ON.
 }
 
@@ -156,6 +159,10 @@ UNTIL VANG(Np, SHIP:FACING:VECTOR) < 0.25 {
 	MONITOR().
 	WAIT 0.001.
 }.
+
+SET STEERINGMANAGER:MAXSTOPPINGTIME TO 5.
+SET STEERINGMANAGER:PITCHPID:KD TO 1.
+SET STEERINGMANAGER:YAWPID:KD TO 1.
 
 SET Time1 to TIME.
 SET Time2 to TIME.

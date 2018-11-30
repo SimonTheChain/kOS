@@ -34,6 +34,10 @@ LOCK ShipAlt TO SHIP:ALTITUDE.
 LOCK ApoTime TO ETA:APOAPSIS.
 LOCK ShipVertical TO SHIP:VERTICALSPEED.
 LIST ENGINES IN AllEngines.
+SET MainEngines TO LIST().
+SET SecEngines TO LIST().
+SET Boosters TO LIST().
+SET UpperEngines TO LIST().
 
 PRINT "_PHASE 0_: Launch".
 SAS OFF.
@@ -45,8 +49,45 @@ FROM {local Countdown is 10.} UNTIL Countdown = 0 STEP {SET Countdown TO Countdo
     IF Countdown = 3 {
         PRINT "Countdown: "+Countdown+" " AT(0,1).
         PRINT "C".
-        PRINT "Ignition".
+        PRINT "Main engine ignition".
         STAGE.
+
+        UNTIL STAGE:READY {
+            WAIT 0.001.
+        }.
+
+        FOR e IN AllEngines {
+            IF e:IGNITION {
+                MainEngines:ADD(e).
+            }
+        }
+
+        // Uncomment if using secondary liquid-fuel engines
+        PRINT "Secondary engines ignition".
+        STAGE.
+
+        UNTIL STAGE:READY {
+            WAIT 0.001.
+        }.
+
+        FOR e IN AllEngines {
+            IF e:IGNITION {
+                IF NOT MainEngines:CONTAINS(e) {
+                    SecEngines:ADD(e).
+                }
+            }
+        }.
+
+        IF SecEngines:LENGTH >= 1 {
+            WHEN SecEngines[0]:FLAMEOUT THEN {
+                PRINT "Discarding secondary engines".
+                STAGE.
+
+                UNTIL STAGE:READY {
+                    WAIT 0.001.
+                }.
+            }.
+        }
 
     } ELSE {
         PRINT "Countdown: "+Countdown+" " AT(0,1).
@@ -55,15 +96,10 @@ FROM {local Countdown is 10.} UNTIL Countdown = 0 STEP {SET Countdown TO Countdo
 }
 
 PRINT "Wating for maximum thrust".
-
-SET FirstStageEngines TO LIST().
-FOR e IN AllEngines {
-    IF e:IGNITION {
-        FirstStageEngines:ADD(e).
-    }
+FOR e IN MainEngines {
+    WAIT UNTIL e:THRUST >= e:AVAILABLETHRUST.
 }
-
-FOR e IN FirstStageEngines {
+FOR e IN SecEngines {
     WAIT UNTIL e:THRUST >= e:AVAILABLETHRUST.
 }
 
@@ -74,12 +110,9 @@ UNTIL STAGE:READY {
 	WAIT 0.001.
 }.
 
-PRINT "_PHASE 1_: Open-loop control".
-
-SET Boosters TO LIST().
 FOR e IN AllEngines {
     IF e:IGNITION {
-        IF NOT FirstStageEngines:CONTAINS(e) {
+        IF NOT SecEngines:CONTAINS(e) AND NOT MainEngines:CONTAINS(e) {
             Boosters:ADD(e).
         }
     }
@@ -91,6 +124,8 @@ IF Boosters:LENGTH >= 1 {
         STAGE.
     }.
 }
+
+PRINT "_PHASE 1_: Open-loop control".
 
 SET ShipSteer TO HEADING(0,90).
 LOCK STEERING TO ShipSteer.
@@ -157,13 +192,13 @@ UNTIL ShipApo >= DesiredPeri {
     WAIT 0.001.
 }.
 
-UNTIL FirstStageEngines[0]:FLAMEOUT {
+UNTIL MainEngines[0]:FLAMEOUT {
 
     IF ApoTime <= 60 {
-        HEAD(3,90,25).
+        HEAD(3,90,30).
 
     } ELSE IF ApoTime > 60 AND ApoTime <= 180 {
-        HEAD(3,90,15).
+        HEAD(3,90,20).
 
     } ELSE {
         HEAD(3,90,5).
@@ -190,46 +225,56 @@ UNTIL STAGE:READY {
     WAIT 0.001.
 }.
 
-LIST ENGINES IN UpperEngines.
-FOR e IN UpperEngines {
+LIST ENGINES IN RemainingEngines.
+FOR e IN RemainingEngines {
     IF e:IGNITION {
-        GLOBAL CurrentEngine IS e.
+        UpperEngines:ADD(e).
     }
 }
 
 IF ApoTime >= 180 {
     SET Pitch TO 0.
 
-} ELSE {
+} ELSE IF ApoTime < 180 AND ApoTime >= 120 {
     SET Pitch TO 5.
+
+} ELSE IF ApoTime < 120 AND ApoTime >= 60 {
+    SET Pitch TO 10.
+
+} ELSE {
+    SET Pitch TO 15.
 
 }
 
 UNTIL ShipPeri >= FinalPeri {
     HEAD(3,90,Pitch).
 
-    IF CurrentEngine:FLAMEOUT {
-        PRINT "Staging".
-        STAGE.
+    // Uncomment to use several upper stages
+    //IF UpperEngines[0]:FLAMEOUT {
+    //    PRINT "Staging".
+    //    STAGE.
 
-        UNTIL STAGE:READY {
-            WAIT 0.001.
-        }.
+    //    UNTIL STAGE:READY {
+    //        WAIT 0.001.
+    //    }.
 
-        PRINT "Ignition".
-        STAGE.
+    //    PRINT "Ignition".
+    //    STAGE.
 
-        UNTIL STAGE:READY {
-            WAIT 0.001.
-        }.
+    //    UNTIL STAGE:READY {
+    //        WAIT 0.001.
+    //    }.
 
-        FOR e IN UpperEngines {
-            IF e:IGNITION {
-                SET CurrentEngine TO e.
-            }
-        }
+    //    RemainingEngines:CLEAR().
+    //    UpperEngines:CLEAR().
+    //    LIST ENGINES IN RemainingEngines.
+    //    FOR e IN RemainingEngines {
+    //        IF e:IGNITION {
+    //            UpperEngines:ADD(e).
+    //        }
+    //    }
 
-    }
+    //}
     WAIT 0.001.
 }.
 
@@ -237,6 +282,6 @@ PRINT "SECO".
 LOCK THROTTLE TO 0.
 RCS OFF.
 SAS ON.
-SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
+SET SHIP:CONTROL:NEUTRALIZE TO True.
 PRINT " ".
 PRINT "Earth orbit insertion program completed.".

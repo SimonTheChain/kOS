@@ -5,7 +5,7 @@ DECLARE PARAMETER PreStage.
 
 CLEARSCREEN.
 LOCK ShipAlt TO SHIP:ALTITUDE.
-PRINT "Earth reentry program started (20181027-1244)".
+PRINT "Earth reentry program started".
 
 WAIT UNTIL ShipAlt <= 200000.
 
