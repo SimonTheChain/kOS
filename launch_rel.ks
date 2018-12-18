@@ -5,6 +5,18 @@ DECLARE PARAMETER HasSecEngines.
 DECLARE PARAMETER HasSeveralUpperStages.
 DECLARE PARAMETER DesiredPeri.
 
+FUNCTION PLANE_ANGLE {
+    set a1 to sin(ship:obt:inclination)*cos(ship:obt:LAN).
+    set a2 to sin(ship:obt:inclination)*sin(ship:obt:LAN).
+    set a3 to cos(ship:obt:inclination).
+
+    set b1 to sin(TARGET:obt:inclination)*cos(TARGET:obt:LAN).
+    set b2 to sin(TARGET:obt:inclination)*sin(TARGET:obt:LAN).
+    set b3 to cos(TARGET:obt:inclination).
+
+    RETURN arccos(a1*b1+a2*b2+a3*b3).
+}
+
 FUNCTION ORBIT_NORMAL {
     PARAMETER OrbitIn.
     
@@ -36,19 +48,20 @@ FUNCTION HEAD {
     PARAMETER LON.
 
     SET ShipSteer TO HEADING(LAT,LON).
-    PRINT "Flight Monitor:" AT(0,29).
+    PRINT "Flight Monitor:" AT(0,28).
     
     IF FLIGHT_MODE = 1 {
-        PRINT "-Changing heading according to altitude" AT(0,30).
+        PRINT "-Changing heading according to altitude" AT(0,29).
     
     } ELSE IF FLIGHT_MODE = 2 {
-        PRINT "-Changing heading according to velocity" AT(0,30).
+        PRINT "-Changing heading according to velocity" AT(0,29).
     
     } ELSE IF FLIGHT_MODE = 3 {
-        PRINT "-Changing heading according to time to apoapsis     " AT(0,30).
+        PRINT "-Changing heading according to time to apoapsis     " AT(0,29).
     }
     
-    PRINT "Relative Inclination: " + RELATIVEINC(SHIP,TARGET) AT(0,31.
+    PRINT "-Relative inclination: " + RELATIVEINC(SHIP,TARGET) AT(0,30).
+    PRINT "-Plane angle: " + PLANE_ANGLE() AT(0,31).
     PRINT "-Pitching to "+ROUND(LON)+" degrees"+"   " AT(0,32).
     PRINT "-Apoapsis: "+ROUND(SHIP:APOAPSIS,0)+"          " AT (0,33).
     PRINT "-Periapsis: "+ROUND(SHIP:PERIAPSIS,0)+"          " AT (0,34).

@@ -1,7 +1,7 @@
 //kOS Script: Earth Reentry
 //Author: Simon Lachaîne
 
-DECLARE PARAMETER PreStage.
+DECLARE PARAMETER NeedStaging.
 
 CLEARSCREEN.
 LOCK ShipAlt TO SHIP:ALTITUDE.
@@ -14,7 +14,7 @@ RCS ON.
 PRINT "Aligning ship for reentry".
 LOCK Dir TO SHIP:RETROGRADE.
 
-IF PreStage = "True" {
+IF NeedStaging = "True" {
     STAGE.
 
     UNTIL STAGE:READY {
@@ -34,7 +34,7 @@ UNTIL STAGE:READY {
     WAIT 0.001.
 }.
 
-WAIT UNTIL SHIP:STATUS = "LANDED".
+WAIT UNTIL SHIP:STATUS = "LANDED" OR SHIP:STATUS = "SPLASHED".
 
 UNLOCK STEERING.
 RCS OFF.
