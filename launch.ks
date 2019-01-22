@@ -3,32 +3,8 @@
 
 DECLARE PARAMETER HasSecEngines.
 DECLARE PARAMETER HasSeveralUpperStages.
+DECLARE PARAMETER DesiredLat.
 DECLARE PARAMETER DesiredPeri.
-
-FUNCTION ORBIT_NORMAL {
-    PARAMETER OrbitIn.
-    
-    RETURN VCRS(OrbitIn:body:position - OrbitIn:position,
-                OrbitIn:velocity:orbit):normalized.
-}
-
-FUNCTION SWAPYZ {
-    PARAMETER VecIn.
-
-    RETURN V(VecIn:X, VecIn:Z, VecIn:Y).
-}
-
-FUNCTION SWAPPED_ORBIT_NORMAL {
-    PARAMETER OrbitIn.
-
-    RETURN -SWAPYZ(ORBIT_NORMAL(OrbitIn)).
-}
-
-FUNCTION RELATIVEINC {
-    PARAMETER OrbiterA, OrbiterB.
-
-    RETURN ABS(VANG(SWAPPED_ORBIT_NORMAL(OrbiterA), SWAPPED_ORBIT_NORMAL(OrbiterB))).
-}
 
 FUNCTION HEAD {
     PARAMETER FLIGHT_MODE.
@@ -48,7 +24,6 @@ FUNCTION HEAD {
         PRINT "-Changing heading according to time to apoapsis     " AT(0,30).
     }
     
-    PRINT "Relative Inclination: " + RELATIVEINC(SHIP,TARGET) AT(0,31.
     PRINT "-Pitching to "+ROUND(LON)+" degrees"+"   " AT(0,32).
     PRINT "-Apoapsis: "+ROUND(SHIP:APOAPSIS,0)+"          " AT (0,33).
     PRINT "-Periapsis: "+ROUND(SHIP:PERIAPSIS,0)+"          " AT (0,34).
@@ -229,7 +204,7 @@ UNTIL ShipAlt >= 200 {
 PRINT "Rolling to flight azimuth".
 
 UNTIL ShipSpeed >= 100 {
-    HEAD(2,90,90).
+    HEAD(2,DesiredLat,90).
     WAIT 0.001.
 }.
 
@@ -238,45 +213,45 @@ PRINT "Initiating tilt sequence".
 UNTIL ShipApo >= DesiredPeri {
 
     IF ShipAlt < 1000 {
-        HEAD(1,90,90).
+        HEAD(1,DesiredLat,90).
     
     } ELSE IF ShipAlt >= 1000 AND ShipAlt < 2000 {
-        HEAD(1,90,85).
+        HEAD(1,DesiredLat,85).
     
     } ELSE IF ShipAlt >= 2000 AND ShipAlt < 3000 {
-        HEAD(1,90,80).
+        HEAD(1,DesiredLat,80).
     
     } ELSE IF ShipAlt >= 3000 {
 
         IF ShipSpeed >= 200 AND ShipSpeed < 300 {
-            HEAD(2,90,75).
+            HEAD(2,DesiredLat,75).
 
         } ELSE IF ShipSpeed >= 300 AND ShipSpeed < 350 {
-            HEAD(2,90,70).
+            HEAD(2,DesiredLat,70).
 
         } ELSE IF ShipSpeed >= 350 AND ShipSpeed < 450 {
-            HEAD(2,90,65).
+            HEAD(2,DesiredLat,65).
 
         } ELSE IF ShipSpeed >= 450 AND ShipSpeed < 550 {
-            HEAD(2,90,60).
+            HEAD(2,DesiredLat,60).
 
         } ELSE IF ShipSpeed >= 550 AND ShipSpeed < 600 {
-            HEAD(2,90,55).
+            HEAD(2,DesiredLat,55).
         
         } ELSE IF ShipSpeed >= 600 AND ShipSpeed < 800 {
-            HEAD(2,90,50).
+            HEAD(2,DesiredLat,50).
 
         } ELSE IF ShipSpeed >= 800 AND ShipSpeed < 1200 {
-            HEAD(2,90,45).
+            HEAD(2,DesiredLat,45).
 
         } ELSE IF ShipSpeed >= 1200 AND ShipSpeed < 1600 {
-            HEAD(2,90,40).
+            HEAD(2,DesiredLat,40).
 
         } ELSE IF ShipSpeed >= 1600 {
-            HEAD(2,90,35).
+            HEAD(2,DesiredLat,35).
         
         } ELSE {
-            HEAD(2,90,80).
+            HEAD(2,DesiredLat,80).
         }
 
     }
@@ -286,19 +261,19 @@ UNTIL ShipApo >= DesiredPeri {
 UNTIL MainEngines[0]:FLAMEOUT {
 
     IF ApoTime <= 60 {
-        HEAD(3,90,35).
+        HEAD(3,DesiredLat,35).
         SET Pitch TO 35.
 
     } ELSE IF ApoTime > 60 AND ApoTime <= 120 {
-        HEAD(3,90,25).
+        HEAD(3,DesiredLat,25).
         SET Pitch TO 25.
 
     } ELSE IF ApoTime > 120 AND ApoTime <= 180 {
-        HEAD(3,90,20).
+        HEAD(3,DesiredLat,20).
         SET Pitch TO 20.
 
     } ELSE {
-        HEAD(3,90,15).
+        HEAD(3,DesiredLat,15).
         SET Pitch TO 15.
     }
     WAIT 0.001.
@@ -338,7 +313,7 @@ WHEN ShipAlt >= 140001 THEN {
 }.
 
 UNTIL ShipPeri >= FinalPeri {
-    HEAD(3,90,Pitch).
+    HEAD(3,DesiredLat,Pitch).
 
     // Catching exception
     IF UpperEngines[0]:FLAMEOUT {

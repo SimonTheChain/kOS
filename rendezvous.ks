@@ -71,6 +71,7 @@ IF RelVel > 50 {
 	BURN_LOOP(50).
 }
 
+RCS ON.
 WAIT_LOOP(500).
 
 IF RelVel > 3 {
@@ -80,7 +81,6 @@ IF RelVel > 3 {
 PRINT "Neutralizing relative velocity".
 PRINT "Thrusters ignition".
 SET RefVel TO RelVel.
-RCS ON.
 SET SHIP:CONTROL:FORE TO 1.
 WAIT 0.1.
 
